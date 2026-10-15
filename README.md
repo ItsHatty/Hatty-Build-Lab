@@ -1,12 +1,20 @@
-# Hatty Build Lab V4.1 — auto-loaded legal body data
+# Hatty Build Lab V4.2
 
-Upload **index.html**, **manifest.webmanifest**, and the entire **data** folder (including `data/legal_bodies.json`) to the repository root. The app automatically fetches `./data/legal_bodies.json` on launch. No manual import on iPhone is needed.
+## What works
+- Loads recorded position/height legal body measurement ranges from `data/legal_bodies.json`.
+- Independent Auto/Manual weight and wingspan controls.
+- Enumerates legal physical combinations at selected height, with cautious feasibility filtering when an external cap dataset is supplied.
+- 21 attributes with minimum/exact targets, base/final selection, and cap breaker strategies (Auto, Prioritize, None, Require 1–5).
+- Local save/load and explicit non-verified planning preview.
 
-**Verified in this release:** Position-specific legal height, weight and wingspan ranges from the upstream community dataset captured August 22, 2026.
+## What is NOT implemented
+- Accurate body-dependent attribute ceilings (not present in the bundled source data).
+- NBA 2K27 overall-99 allocation / linked attribute engine.
+- Validated build-dependent cap breaker gain function.
+- Badge/animation requirement engine.
+- Certified playable build generation.
 
-**Not yet implemented:** Actual body-dependent attribute caps, complete 99 OVR budget, linked attribute constraints, build-specific cap breaker sequences, badge/animation unlock rules, or a real reverse optimizer. Generated planning views are **NOT playable build recommendations**.
+Do not use planning output to spend VC. No proprietary third-party source code is included.
 
-The dataset file is derived from https://github.com/lightmatmul/nba2k27-builder-dataset/blob/main/bodies/legal_bodies.json . Confirm upstream terms before redistribution. This release is not affiliated with 2K.
-
-### iPhone upload tip
-GitHub's web uploader may flatten folders. Open your repo, choose **Add file → Create new file**, enter `data/legal_bodies.json` as the filename, paste the contents of the supplied JSON, then commit. Alternatively use the GitHub web file upload if it preserves folder paths.
+## Deployment
+Upload `index.html`, `manifest.webmanifest`, and `data/legal_bodies.json` preserving folder paths to your GitHub Pages repository.
