@@ -1,5 +1,5 @@
 (function(){'use strict';const $=id=>document.getElementById(id),engine=window.HattyBuild;const output=$('hattyResults');let data;
-function show(msg){output.textContent=msg}
+function show(msg){output.textContent=msg;const status=$('status');if(status)status.textContent=msg;const secondary=$('result');if(secondary)secondary.textContent=msg}
 async function load(){if(data)return data;show('Loading NBA 2K27 measured rules…');const files=['physical-caps.json','linked-rules.json','ovr-model.json'];const [physical,links,ovr]=await Promise.all(files.map(async f=>{const r=await fetch('./data/'+f);if(!r.ok)throw Error('Cannot load '+f);return r.json()}));data={physical,links,ovr};return data}
 function getTargets(){return engine.names.flatMap((name,i)=>{const id=name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/_$/,'');if(!$('on_'+id)?.checked)return[];return [{id:engine.ids[i],rating:Number($('val_'+id).value),mode:$('mode_'+id).value,breaker:$('cb_'+id).value}]})}
 function heightLabel(inches){return `${Math.floor(inches/12)}'${inches%12}"`}
@@ -9,7 +9,7 @@ feasible.sort((a,b)=>a.headroom-b.headroom);const top=feasible.slice(0,5).map(r=
 if(targets.some(t=>t.breaker==='require'||t.breaker==='priority'))html+='<p class="warn">Cap-breaker priorities are not optimized in this release. Targets are treated as required BASE ratings.</p>';
 if(!top.length)html+='<p>No candidate for these BASE targets at this height. Try lowering targets or changing height. This does not rule out a cap-breaker-assisted build.</p>';
 for(const [i,r] of top.entries())html+=`<div class="insight"><h3>#${i+1} · ${pos} ${heightLabel(height)} · ${r.body.weight} lb · ${heightLabel(r.body.wing)} wingspan</h3><p>Calculated OVR: <b>${r.ovr.toFixed(3)}</b> / 99 · Builder attributes (no breakers)</p><div class="scroll"><table><tr><th>Attribute</th><th>Rating</th><th>Physical cap</th></tr>${engine.ids.map((a,j)=>`<tr><td>${engine.names[j]}</td><td><b>${r.ratings[a]}</b></td><td>${r.caps[a]}</td></tr>`).join('')}</table></div></div>`;
-output.innerHTML=html;output.scrollIntoView({behavior:'smooth',block:'start'});
+output.innerHTML=html;const secondary=$('result');if(secondary)secondary.innerHTML=html;const status=$('status');if(status)status.textContent=`Optimization complete: ${checked} legal bodies checked, ${feasible.length} candidates. Results below.`;output.scrollIntoView({behavior:'smooth',block:'start'});
 }catch(e){show('Unable to calculate: '+e.message);console.error(e)}}
 $('hattyRun').addEventListener('click',run);
 })();
