@@ -1,4 +1,4 @@
-Hatty Build Lab — UI clarity repair
+Hatty’s Build Wizard — UI clarity repair
 
 Upload the contents of this ZIP to the ROOT of the existing GitHub Pages repository, preserving the data/ directory. Replace matching files.
 
