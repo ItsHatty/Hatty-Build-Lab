@@ -1,9 +1,36 @@
 /* Hatty Build Lab V4.3: strict rule-gated exact search. No estimated 2K formulas. */
 (function(global){'use strict';
-const ATTRS=['Close Shot','Driving Layup','Driving Dunk','Standing Dunk','Post Control','Mid-Range Shot','Three-Point Shot','Free Throw','Pass Accuracy','Ball Handle','Speed With Ball','Interior Defense','Perimeter Defense','Steal','Block','Offensive Rebound','Defensive Rebound','Speed','Agility','Strength','Vertical','Stamina'];
+const ATTRS=['Close Shot','Driving Layup','Driving Dunk','Standing Dunk','Post Control','Mid-Range Shot','Three-Point Shot','Free Throw','Pass Accuracy','Ball Handle','Speed With Ball','Interior Defense','Perimeter Defense','Steal','Block','Offensive Rebound','Defensive Rebound','Speed','Agility','Strength','Vertical' ];
 const id=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/_$/,'');
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function validate(bundle){let missing=[];if(!bundle||!bundle.verified||!bundle.verified.source||!bundle.verified.checked_at)missing.push('verification source/date');if(!bundle?.pricing||!Number.isFinite(bundle.pricing.budget))missing.push('verified overall budget');if(!bundle?.pricing?.model||bundle.pricing.model!=='per_body_attribute_cumulative')missing.push('per-body cumulative attribute costs');if(!bundle?.caps)missing.push('body-specific attribute ceilings');if(!bundle?.costs)missing.push('body-specific cumulative attribute costs');if(!bundle?.cap_breaker_sequences)missing.push('body-specific cap breaker sequences');if(!bundle?.linked_attribute_validator)missing.push('linked-attribute validation specification');if(bundle?.linked_attribute_validator?.type!=='explicit_legal_vectors')missing.push('explicit legal base-attribute vectors');return missing}
+function validate(bundle){
+  const missing=[];
+  if(!bundle?.verified?.source||!bundle?.verified?.checked_at||bundle.verified.source.startsWith('REPLACE_'))missing.push('verification source/date');
+  if(!Number.isFinite(bundle?.pricing?.budget)||bundle.pricing.budget<=0)missing.push('verified overall budget');
+  if(bundle?.pricing?.model!=='per_body_attribute_cumulative')missing.push('per-body cumulative attribute costs');
+  if(!bundle?.caps||typeof bundle.caps!=='object')missing.push('body-specific attribute ceilings');
+  if(!bundle?.costs||typeof bundle.costs!=='object')missing.push('body-specific cumulative attribute costs');
+  if(!bundle?.cap_breaker_sequences||typeof bundle.cap_breaker_sequences!=='object')missing.push('body-specific cap breaker sequences');
+  if(bundle?.linked_attribute_validator?.type!=='explicit_legal_vectors'||!bundle.linked_attribute_validator.vectors)missing.push('explicit legal base-attribute vectors');
+  if(missing.length)return missing;
+  const keys=Object.keys(bundle.caps);
+  if(!keys.length)return ['at least one verified body'];
+  for(const key of keys){
+    const caps=bundle.caps[key],costs=bundle.costs[key],sequences=bundle.cap_breaker_sequences[key],vectors=bundle.linked_attribute_validator.vectors[key];
+    if(!costs||!sequences||!Array.isArray(vectors)||!vectors.length)return ['complete cost, progression and legal vectors for '+key];
+    for(const name of ATTRS){const k=id(name),cap=caps[k],prices=costs[k],seqByBase=sequences[k];
+      if(!Number.isInteger(cap)||cap<25||cap>99||!prices||!seqByBase)return ['complete attribute rules for '+key+' / '+name];
+      for(const [baseStr,seq] of Object.entries(seqByBase)){
+        const base=Number(baseStr);
+        if(!Number.isInteger(base)||base<25||base>cap||!Array.isArray(seq)||seq.length>5)return ['invalid cap breaker sequence for '+key+' / '+name];
+        let previous=base;
+        for(const value of seq){if(!Number.isInteger(value)||value<=previous||value>99)return ['invalid cap breaker progression for '+key+' / '+name+' at '+base];previous=value;}
+      }
+    }
+    for(const vector of vectors){if(!vector||ATTRS.some(name=>{const k=id(name),v=vector[k];return !Number.isInteger(v)||v<25||v>caps[k]||!Number.isFinite(costs[k]?.[v])||costs[k][v]<0}))return ['invalid legal base vector for '+key];}
+  }
+  return [];
+}
 function bodyKey(pos,h,w,wing){return [pos,h,w,wing].join(':')}
 function optionsForAttr(name,target,cap,costs,seqs,count,phase){const k=id(name),rating=target?.rating,mode=target?.mode||'min',strategy=target?.capStrategy||'auto',require=target?.requiredBreakers||0;let result=[];for(let base=25;base<=cap;base++){const price=costs?.[k]?.[base];if(!Number.isFinite(price)||price<0)continue;const seq=seqs?.[k]?.[base];for(let n=0;n<=Math.min(5,count);n++){if(n&&(!Array.isArray(seq)||!Number.isInteger(seq[n-1])))continue;if(strategy==='none'&&n)continue;if(strategy==='require'&&n!==require)continue;const final=n?seq[n-1]:base;if(final<base||final>99)continue;if(target){const actual=phase==='base'?base:final;if(mode==='exact'?actual!==rating:actual<rating)continue}result.push({base,final,n,price,bonus:strategy==='priority'?n:0})}}return result}
 function optimizeBody(body,targets,bundle,breakerCount,phase){const key=bodyKey(body.position,body.height,body.weight,body.wing);const caps=bundle.caps[key],cost=bundle.costs[key],seq=bundle.cap_breaker_sequences[key],vectors=bundle.linked_attribute_validator.vectors?.[key];if(!caps||!cost||!seq||!Array.isArray(vectors))return {status:'unverified',reason:'Incomplete body rules'};const targetMap=Object.fromEntries(targets.map(t=>[t.id,t]));let best=null;const budget=bundle.pricing.budget;for(const vector of vectors){if(!vector||typeof vector!=='object')continue;let spent=0,chosen=[],valid=true,breakers=0,priority=0;for(const name of ATTRS){const k=id(name),base=vector[k],cap=caps[k];if(!Number.isInteger(base)||!Number.isInteger(cap)||base<25||base>cap||!Number.isFinite(cost[k]?.[base])){valid=false;break}spent+=cost[k][base];if(spent>budget){valid=false;break}const opts=optionsForAttr(name,targetMap[k],cap,cost,seq,breakerCount,phase).filter(x=>x.base===base);if(!opts.length){valid=false;break}chosen.push(opts)}if(!valid)continue;
